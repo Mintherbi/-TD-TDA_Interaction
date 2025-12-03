@@ -1,0 +1,18 @@
+# 대용량 데이터 (원본/튜토리얼)
+Dataset/RAW/
+py_TDA/AllenSDK_Tutorials/TutorialDataset/
+
+# TouchDesigner 백업
+Touchdesigner/Backup/
+
+# node / 서버 관련
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# macOS
+.DS_Store
+
+# 기타 로그
+*.log
