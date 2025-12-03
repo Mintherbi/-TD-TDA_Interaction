@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hand Tracking Client</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: #000; font-family: monospace; }
+        /* Webcam Video (Hidden but active for processing) */
+        video { 
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            object-fit: cover;
+            opacity: 0; /* Hide visually but keep active */
+            z-index: -1;
+        } 
+        /* TouchDesigner Stream (Main View) */
+        #td-stream {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            object-fit: contain;
+            z-index: 1;
+        }
+        /* Canvas for Landmarks (Overlay) */
+        canvas { position: absolute; top: 0; left: 0; pointer-events: none; transform: scaleX(-1); width: 100vw; height: 100vh; object-fit: cover; z-index: 2; }
+        #status { position: absolute; top: 10px; left: 10px; color: #0f0; font-size: 16px; z-index: 10; background: rgba(0,0,0,0.5); padding: 5px; }
+        #data-display {
+            position: absolute;
+            top: 50px;
+            left: 10px;
+            color: #fff;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 10px;
+            border-radius: 5px;
+            z-index: 10;
+            display: flex;
+            gap: 10px;
+            max-height: 80vh;
+        }
+        .hand-panel {
+            width: 220px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .hand-title { font-size: 1.2em; margin-bottom: 5px; border-bottom: 1px solid #555; padding-bottom: 3px; }
+        .data-row { margin-bottom: 5px; font-size: 14px; }
+        .label { color: #aaa; }
+        .value { font-weight: bold; color: #fff; }
+        .value.true { color: #0f0; }
+        .value.false { color: #f00; }
+        .landmarks-scroll {
+            margin-top: 10px;
+            height: 200px;
+            overflow-y: auto;
+            font-size: 10px;
+            background: rgba(0,0,0,0.3);
+            padding: 5px;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <div id="status">Initializing...</div>
+    <!-- Image element to display TouchDesigner stream -->
+    <img id="td-stream" src="" alt="Waiting for TouchDesigner Stream...">
+    <video id="webcam" autoplay playsinline></video>
+    <canvas id="output_canvas"></canvas>
+    <div id="data-display">
+        <!-- Hand 1 Panel -->
+        <div id="hand-panel-0" class="hand-panel" style="display: none;">
+            <div class="hand-title" id="hand-title-0">Hand 1</div>
+            <div class="data-row"><span class="label">State:</span> <span id="hand-state-0" class="value">-</span></div>
+            <div class="data-row"><span class="label">Pinch:</span> <span id="pinch-state-0" class="value">-</span></div>
+            <div class="data-row"><span class="label">Distance:</span> <span id="pinch-dist-0" class="value">-</span></div>
+            <div class="landmarks-scroll" id="landmarks-0"></div>
+        </div>
+        <!-- Hand 2 Panel -->
+        <div id="hand-panel-1" class="hand-panel" style="display: none;">
+            <div class="hand-title" id="hand-title-1">Hand 2</div>
+            <div class="data-row"><span class="label">State:</span> <span id="hand-state-1" class="value">-</span></div>
+            <div class="data-row"><span class="label">Pinch:</span> <span id="pinch-state-1" class="value">-</span></div>
+            <div class="data-row"><span class="label">Distance:</span> <span id="pinch-dist-1" class="value">-</span></div>
+            <div class="landmarks-scroll" id="landmarks-1"></div>
+        </div>
+    </div>
+    <video id="webcam" autoplay playsinline></video>
+    <canvas id="output_canvas"></canvas>
+
+    <!-- Load Script as Module -->
+    <script type="module" src="js/hand_tracking.js"></script>
+</body>
+</html>
