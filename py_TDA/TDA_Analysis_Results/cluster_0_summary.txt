@@ -1,0 +1,18 @@
+--- Cluster 0 Analysis ---
+Points: 196
+Total H1 Loops Detected: 119
+Significant Loops (> 0.262 lifetime): 12
+Top Significant Loops (Birth, Death, Lifetime):
+  1. Birth=3.560, Death=4.001, Life=0.441
+  2. Birth=4.275, Death=4.712, Life=0.437
+  3. Birth=4.311, Death=4.711, Life=0.400
+  4. Birth=4.771, Death=5.160, Life=0.389
+  5. Birth=3.962, Death=4.347, Life=0.385
+  6. Birth=4.218, Death=4.599, Life=0.381
+  7. Birth=4.081, Death=4.457, Life=0.377
+  8. Birth=4.001, Death=4.363, Life=0.362
+  9. Birth=4.829, Death=5.159, Life=0.330
+  10. Birth=3.973, Death=4.302, Life=0.329
+  11. Birth=4.686, Death=4.985, Life=0.299
+  12. Birth=4.339, Death=4.602, Life=0.263
+Conclusion: Cluster 0 likely contains 12 true topological loops.
