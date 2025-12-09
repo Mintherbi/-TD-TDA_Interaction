@@ -1,6 +1,9 @@
 import matplotlib.pyplot as plt
 import seaborn as sns
 from cycler import cycler
+import networkx as nx
+from matplotlib.offsetbox import OffsetImage, AnnotationBbox
+import numpy as np
 
 # Color Palette Constants (High Contrast for Dark Background)
 BLUE = '#448AFF'      # Bright Blue
@@ -228,3 +231,124 @@ def plot_3d_connected_trajectory(ax, x, y, z, c, cmap='inferno', title=None, xla
         ax.set_title(title, pad=20, color=WHITE, fontsize=12, fontweight='bold')
         
     return sc
+
+def plot_network_graph(ax, G, pos, node_colors=CYAN, node_size=50, 
+                       edge_color=GRAY, edge_width=1.0, edge_alpha=0.5,
+                       with_labels=False, label_font_size=8, 
+                       cmap='turbo', title=None):
+    """Plots a NetworkX graph with architectural style."""
+    
+    # Edges
+    if isinstance(edge_width, list):
+         nx.draw_networkx_edges(G, pos, width=edge_width, edge_color=edge_color, alpha=edge_alpha, ax=ax)
+    else:
+         nx.draw_networkx_edges(G, pos, width=edge_width, edge_color=edge_color, alpha=edge_alpha, ax=ax)
+
+    # Nodes
+    if isinstance(node_colors, list) or isinstance(node_colors, np.ndarray):
+        nodes = nx.draw_networkx_nodes(G, pos, nodelist=list(G.nodes()), 
+                                       node_size=node_size, 
+                                       node_color=node_colors, 
+                                       cmap=cmap, 
+                                       ax=ax)
+    else:
+        nodes = nx.draw_networkx_nodes(G, pos, nodelist=list(G.nodes()), 
+                                       node_size=node_size, 
+                                       node_color=node_colors, 
+                                       ax=ax)
+        
+    # Labels
+    if with_labels:
+        nx.draw_networkx_labels(G, pos, font_size=label_font_size, font_color=BLACK,
+                                bbox=dict(facecolor=WHITE, alpha=0.7, edgecolor='none', pad=1), ax=ax)
+
+    # Title & Axis
+    if title:
+        ax.set_title(title.upper(), color=WHITE, fontweight='bold')
+    ax.axis("off")
+    
+    return nodes
+
+def plot_network_with_images(ax, G, pos, frames, movie_template, 
+                             branch_nodes, leaf_nodes, 
+                             node_colors=None, cmap='turbo', title=None):
+    """Plots a network with image overlays for branch and leaf nodes."""
+    
+    # 1. Draw Base Graph
+    nx.draw_networkx_edges(G, pos, edge_color=GRAY, alpha=0.5, width=1.0, ax=ax)
+    
+    if node_colors is not None:
+        nx.draw_networkx_nodes(G, pos, nodelist=list(G.nodes()), 
+                               node_size=20, 
+                               node_color=node_colors, 
+                               cmap=cmap, 
+                               alpha=0.6,
+                               ax=ax)
+    else:
+        nx.draw_networkx_nodes(G, pos, nodelist=list(G.nodes()), 
+                               node_size=20, 
+                               node_color=CYAN, 
+                               alpha=0.6,
+                               ax=ax)
+
+    # Center for offset calculation
+    pos_values = np.array(list(pos.values()))
+    center_pos = np.mean(pos_values, axis=0)
+    
+    # Colormap for borders
+    norm = plt.Normalize(vmin=np.min(frames), vmax=np.max(frames))
+    cm = plt.cm.get_cmap(cmap)
+
+    def add_image_node(node_idx):
+        frame_idx = int(frames[node_idx])
+        border_color = cm(norm(frame_idx))
+        
+        if 0 <= frame_idx < movie_template.shape[0]:
+            img_data = movie_template[frame_idx]
+            
+            node_pos = pos[node_idx]
+            vec = node_pos - center_pos
+            dist = np.linalg.norm(vec)
+            
+            if dist > 0:
+                direction = vec / dist
+            else:
+                direction = np.array([1, 1]) / np.sqrt(2)
+                
+            # Random rotation for organic feel
+            rand_angle = np.random.uniform(-0.3, 0.3)
+            c, s = np.cos(rand_angle), np.sin(rand_angle)
+            rot_mat = np.array([[c, -s], [s, c]])
+            direction = np.dot(rot_mat, direction)
+            
+            offset_scale = 80
+            offset = direction * offset_scale
+            
+            imagebox = OffsetImage(img_data, zoom=0.15, cmap='gray')
+            ab = AnnotationBbox(imagebox, node_pos, 
+                                xybox=offset,
+                                boxcoords="offset points",
+                                arrowprops=dict(arrowstyle="-", color=border_color, alpha=0.5),
+                                frameon=True, pad=0.2,
+                                bboxprops=dict(edgecolor=border_color, linewidth=2))
+            ax.add_artist(ab)
+
+    # Select top nodes to avoid overcrowding
+    # Branch
+    sorted_branches = sorted(branch_nodes, key=lambda n: G.degree(n), reverse=True)
+    top_branches = sorted_branches[:25]
+    
+    # Leaf
+    leaf_distances = [(n, np.linalg.norm(pos[n] - center_pos)) for n in leaf_nodes]
+    sorted_leaves = sorted(leaf_distances, key=lambda x: x[1], reverse=True)
+    top_leaves = [n for n, dist in sorted_leaves[:25]]
+    
+    for n in top_branches:
+        add_image_node(n)
+        
+    for n in top_leaves:
+        add_image_node(n)
+
+    if title:
+        ax.set_title(title.upper(), color=WHITE, fontweight='bold')
+    ax.axis("off")
