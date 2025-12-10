@@ -223,11 +223,160 @@ class NetworkManager {
 }
 
 /**
+ * Interaction Manager
+ * Handles hover interactions for UI buttons.
+ */
+class InteractionManager {
+    constructor() {
+        this.triggerBtn = document.getElementById("trigger-btn");
+        this.triggerProgress = document.getElementById("trigger-progress");
+        this.albumOverlay = document.getElementById("album-overlay");
+        this.closeBtn = document.getElementById("close-btn");
+        this.closeProgress = document.getElementById("close-progress");
+        this.albumContent = document.getElementById("album-content");
+
+        this.isAlbumOpen = false;
+        this.hoverStartTime = 0;
+        this.hoverDuration = 3000; // 3 seconds
+        this.isHovering = false;
+        this.hoverTarget = null; // 'trigger' or 'close'
+
+        this.regions = ['CA1', 'CA3', 'DG', 'LGd', 'LP', 'PO', 'TH', 'VISal', 'VISam', 'VISl', 'VISp', 'VISpm', 'VISrl', 'VPM'];
+        
+        this.loadAlbum();
+    }
+
+    loadAlbum() {
+        this.albumContent.innerHTML = "";
+        
+        // Section 1: UMAP 3D
+        const section1 = document.createElement("div");
+        section1.className = "section-title";
+        section1.innerText = "1. UMAP 3D PROJECTIONS";
+        this.albumContent.appendChild(section1);
+
+        this.regions.forEach(region => {
+            const item = document.createElement("div");
+            item.className = "album-item";
+            item.innerHTML = `
+                <img src="py_TDA/Results/TDA_Iteration/1_UMAP_3D/${region}.png" loading="lazy">
+                <div class="album-title">${region}</div>
+            `;
+            this.albumContent.appendChild(item);
+        });
+
+        // Section 2: Manifold Skeleton
+        const section2 = document.createElement("div");
+        section2.className = "section-title";
+        section2.innerText = "2. MANIFOLD SKELETONS";
+        this.albumContent.appendChild(section2);
+
+        this.regions.forEach(region => {
+            const item = document.createElement("div");
+            item.className = "album-item";
+            item.innerHTML = `
+                <img src="py_TDA/Results/TDA_Iteration/4_Manifold_Skeleton/${region}.png" loading="lazy">
+                <div class="album-title">${region}</div>
+            `;
+            this.albumContent.appendChild(item);
+        });
+    }
+
+    update(landmarksList) {
+        let hovering = false;
+        let target = null;
+
+        // Determine active target based on state
+        const activeBtn = this.isAlbumOpen ? this.closeBtn : this.triggerBtn;
+        const activeProgress = this.isAlbumOpen ? this.closeProgress : this.triggerProgress;
+        const targetName = this.isAlbumOpen ? 'close' : 'trigger';
+
+        const rect = activeBtn.getBoundingClientRect();
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
+        const radius = rect.width / 2; // Assuming circular
+
+        // Check all hands
+        for (const landmarks of landmarksList) {
+            const indexTip = landmarks[8]; // Index finger tip
+            
+            // Convert normalized coordinates to screen coordinates
+            // Note: Canvas is mirrored (scaleX(-1)), so x is flipped visually
+            // Visual X = (1 - x) * window.innerWidth
+            const screenX = (1 - indexTip.x) * window.innerWidth;
+            const screenY = indexTip.y * window.innerHeight;
+
+            // Check distance to button center
+            const dist = Math.sqrt(Math.pow(screenX - centerX, 2) + Math.pow(screenY - centerY, 2));
+            
+            if (dist < radius + 20) { // +20px tolerance
+                hovering = true;
+                target = targetName;
+                break; // Found a hand hovering
+            }
+        }
+
+        // Handle Hover State
+        if (hovering) {
+            if (!this.isHovering || this.hoverTarget !== target) {
+                // Start Hover
+                this.isHovering = true;
+                this.hoverTarget = target;
+                this.hoverStartTime = Date.now();
+                activeBtn.classList.add("active");
+                activeProgress.classList.add("spinning");
+            } else {
+                // Continue Hover
+                const elapsed = Date.now() - this.hoverStartTime;
+                if (elapsed >= this.hoverDuration) {
+                    this.triggerAction(target);
+                    this.resetHover(); // Reset after trigger
+                }
+            }
+        } else {
+            if (this.isHovering) {
+                this.resetHover();
+            }
+        }
+    }
+
+    resetHover() {
+        this.isHovering = false;
+        this.hoverTarget = null;
+        this.triggerBtn.classList.remove("active");
+        this.triggerProgress.classList.remove("spinning");
+        this.closeBtn.classList.remove("active");
+        this.closeProgress.classList.remove("spinning");
+    }
+
+    triggerAction(target) {
+        if (target === 'trigger') {
+            this.openAlbum();
+        } else if (target === 'close') {
+            this.closeAlbum();
+        }
+    }
+
+    openAlbum() {
+        this.isAlbumOpen = true;
+        this.albumOverlay.style.display = "flex";
+        this.triggerBtn.style.display = "none";
+    }
+
+    closeAlbum() {
+        this.isAlbumOpen = false;
+        this.albumOverlay.style.display = "none";
+        this.triggerBtn.style.display = "flex";
+    }
+}
+
+/**
  * Main Application
  */
 class HandTrackingApp {
     constructor() {
         this.ui = new UIManager();
+        this.interaction = new InteractionManager();
         this.network = new NetworkManager(CONFIG.WS_URL, 
             (msg) => {
                 if(msg.includes("WebSocket")) this.ui.setStatus(msg);
@@ -309,6 +458,7 @@ class HandTrackingApp {
 
                 // Process Results
                 if (results.landmarks) {
+                    this.interaction.update(results.landmarks);
                     const allHandsData = [];
 
                     results.landmarks.forEach((landmarks, i) => {
