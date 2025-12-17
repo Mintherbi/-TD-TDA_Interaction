@@ -1,0 +1,39 @@
+%!Adobe-FontList 1.25
+%Locale:0x409
+
+%BeginFont
+Handler:DirectoryHandler
+FontType:Invalid
+OutlineFileName:/Users/minsupchung/Library/Mobile Documents/com~apple~CloudDocs/[GSAPP]Studio Materials/Colloquium 2/Propose Review/Propose Review Presentation Folder/Document fonts/AdobeFnt25.lst
+FileLength:716
+FileModTime:787368417
+%EndFont
+
+%BeginFont
+Handler:DirectoryHandler
+FontType:Type1
+FontName:MinionPro-Regular
+FamilyName:Minion Pro
+StyleName:Regular
+MenuName:Minion Pro
+StyleBits:0
+WeightClass:400
+WidthClass:5
+AngleClass:0
+FullName:Minion Pro
+WritingScript:Roman
+OutlineFileName:/Users/minsupchung/Library/Mobile Documents/com~apple~CloudDocs/[GSAPP]Studio Materials/Colloquium 2/Propose Review/Propose Review Presentation Folder/Document fonts/MinionPro-Regular.otf
+DataFormat:sfntData
+UsesStandardEncoding:yes
+isCFF:yes
+hasSVG:no
+hasSBIX:no
+hasCOLR:no
+VariableFontType:NonVariableFont
+FileLength:218640
+FileModTime:786169082
+DesignSize:110
+NameArray:0,Mac,4,Minion Pro
+NameArray:0,Win,1,Minion Pro
+%EndFont
+

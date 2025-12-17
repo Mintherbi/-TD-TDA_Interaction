@@ -1,0 +1,1147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neural Data Pipeline - Interactive Visualization</title>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-bg: #0a0a0a;
+            --secondary-bg: #1a1a1a;
+            --accent: #00ff88;
+            --text-primary: #ffffff;
+            --text-secondary: #888888;
+            --border: #333333;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--primary-bg);
+            color: var(--text-primary);
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 60px;
+            padding: 40px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        h1 {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, var(--accent), #00aaff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            color: var(--text-secondary);
+        }
+
+        .pipeline-container {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 40px;
+            flex-wrap: wrap;
+        }
+
+        .stage {
+            flex: 1;
+            min-width: 200px;
+            padding: 20px;
+            background: var(--secondary-bg);
+            border-radius: 12px;
+            border: 2px solid var(--border);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .stage:hover {
+            border-color: var(--accent);
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 255, 136, 0.2);
+        }
+
+        .stage.active {
+            border-color: var(--accent);
+            background: linear-gradient(135deg, rgba(0, 255, 136, 0.1), rgba(0, 170, 255, 0.1));
+        }
+
+        .stage-number {
+            display: inline-block;
+            width: 30px;
+            height: 30px;
+            line-height: 30px;
+            text-align: center;
+            background: var(--accent);
+            color: var(--primary-bg);
+            border-radius: 50%;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .stage-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .stage-desc {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .viz-container {
+            background: var(--secondary-bg);
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 40px;
+            border: 1px solid var(--border);
+        }
+
+        .viz-title {
+            font-size: 1.8rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .controls {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .control-label {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        button {
+            padding: 12px 24px;
+            background: var(--accent);
+            color: var(--primary-bg);
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 1rem;
+        }
+
+        button:hover {
+            background: #00dd77;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 255, 136, 0.3);
+        }
+
+        button:disabled {
+            background: var(--border);
+            color: var(--text-secondary);
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        input[type="range"] {
+            width: 300px;
+            height: 6px;
+            border-radius: 3px;
+            background: var(--border);
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--accent);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+            box-shadow: 0 0 10px var(--accent);
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--accent);
+            cursor: pointer;
+            border: none;
+        }
+
+        select {
+            padding: 10px 16px;
+            background: var(--primary-bg);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        select:hover {
+            border-color: var(--accent);
+        }
+
+        .plot-container {
+            background: var(--primary-bg);
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .info-panel {
+            background: rgba(0, 255, 136, 0.1);
+            border: 1px solid var(--accent);
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .info-panel h3 {
+            color: var(--accent);
+            margin-bottom: 10px;
+        }
+
+        .info-panel p {
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .stat-card {
+            background: var(--primary-bg);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+
+        .stat-label {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-secondary);
+        }
+
+        .spinner {
+            border: 3px solid var(--border);
+            border-top: 3px solid var(--accent);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2rem;
+            }
+
+            .pipeline-container {
+                flex-direction: column;
+            }
+
+            input[type="range"] {
+                width: 100%;
+            }
+
+            .controls {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Neural Data Processing Pipeline</h1>
+            <p class="subtitle">Interactive Visualization: From Raw Signals to 1D Tree Structure</p>
+        </header>
+
+        <div class="pipeline-container">
+            <div class="stage active" data-stage="1">
+                <span class="stage-number">1</span>
+                <div class="stage-title">Raw Unit Signals</div>
+                <div class="stage-desc">Neural spike activity across time</div>
+            </div>
+            <div class="stage" data-stage="2">
+                <span class="stage-number">2</span>
+                <div class="stage-title">Latent Space</div>
+                <div class="stage-desc">High-dimensional neural state</div>
+            </div>
+            <div class="stage" data-stage="3">
+                <span class="stage-number">3</span>
+                <div class="stage-title">PCA Reduction</div>
+                <div class="stage-desc">3D principal components</div>
+            </div>
+            <div class="stage" data-stage="4">
+                <span class="stage-number">4</span>
+                <div class="stage-title">UMAP Projection</div>
+                <div class="stage-desc">2D manifold structure</div>
+            </div>
+            <div class="stage" data-stage="5">
+                <span class="stage-number">5</span>
+                <div class="stage-title">1D Tree</div>
+                <div class="stage-desc">Spanning tree topology</div>
+            </div>
+        </div>
+
+        <div id="loading" class="loading">
+            <div class="spinner"></div>
+            <p>Loading neural data...</p>
+        </div>
+
+        <div id="stage1" class="viz-container">
+            <h2 class="viz-title">Stage 1: Raw Unit Signals</h2>
+            <div class="controls">
+                <div class="control-group">
+                    <label class="control-label">Select Probe</label>
+                    <select id="probeSelect">
+                        <option value="A">Probe A</option>
+                        <option value="B">Probe B</option>
+                        <option value="C">Probe C</option>
+                        <option value="D">Probe D</option>
+                        <option value="E">Probe E</option>
+                        <option value="F">Probe F</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label class="control-label">Time Frame: <span id="frameValue">0</span></label>
+                    <input type="range" id="frameSlider" min="0" max="899" value="0" step="1">
+                </div>
+                <button id="playButton">Play Animation</button>
+            </div>
+            <div id="rawSignalsPlot" class="plot-container"></div>
+            <div class="info-panel">
+                <h3>About Raw Signals</h3>
+                <p>Neural units (neurons) fire action potentials in response to stimuli. Each row represents one neuron's firing rate over time, showing how different brain regions respond to visual input.</p>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">Total Units</div>
+                        <div class="stat-value" id="totalUnits">-</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Time Frames</div>
+                        <div class="stat-value">900</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Brain Regions</div>
+                        <div class="stat-value" id="brainRegions">-</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="stage2" class="viz-container hidden">
+            <h2 class="viz-title">Stage 2: Latent Space Representation</h2>
+            <div class="controls">
+                <div class="control-group">
+                    <label class="control-label">Animation Speed</label>
+                    <select id="latentSpeedSelect">
+                        <option value="100">Slow</option>
+                        <option value="50" selected>Normal</option>
+                        <option value="20">Fast</option>
+                    </select>
+                </div>
+                <button id="playLatentButton">Play Animation</button>
+                <button id="resetLatentButton">Reset</button>
+            </div>
+            <div id="latentSpacePlot" class="plot-container"></div>
+            <div class="info-panel">
+                <h3>About Latent Space</h3>
+                <p>The latent space represents the collective state of all neurons at each time point. We visualize 3 selected units as axes in 3D space. As time progresses, each neural state becomes a point, and the trajectory traces the evolution through this space.</p>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">Selected Units</div>
+                        <div class="stat-value" id="selectedUnits">3</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Current Frame</div>
+                        <div class="stat-value" id="currentLatentFrame">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Points Plotted</div>
+                        <div class="stat-value" id="pointsPlotted">0</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="stage3" class="viz-container hidden">
+            <h2 class="viz-title">Stage 3: PCA 3D Projection</h2>
+            <div class="controls">
+                <div class="control-group">
+                    <label class="control-label">Color By</label>
+                    <select id="colorByPCA">
+                        <option value="time">Time</option>
+                        <option value="brightness">Brightness</option>
+                        <option value="complexity">Complexity</option>
+                    </select>
+                </div>
+                <button id="rotatePCA">Auto Rotate</button>
+            </div>
+            <div id="pcaPlot" class="plot-container"></div>
+            <div class="info-panel">
+                <h3>About PCA</h3>
+                <p>Principal Component Analysis (PCA) reduces the high-dimensional neural data to 3D while preserving maximum variance. The trajectory shows how neural states evolve over time in this reduced space.</p>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">Variance Explained</div>
+                        <div class="stat-value">~85%</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Dimensions</div>
+                        <div class="stat-value">3D</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="stage4" class="viz-container hidden">
+            <h2 class="viz-title">Stage 4: UMAP 2D Manifold</h2>
+            <div class="controls">
+                <div class="control-group">
+                    <label class="control-label">Color By</label>
+                    <select id="colorByUMAP">
+                        <option value="time">Time</option>
+                        <option value="brightness">Brightness</option>
+                        <option value="complexity">Complexity</option>
+                    </select>
+                </div>
+            </div>
+            <div id="umapPlot" class="plot-container"></div>
+            <div class="info-panel">
+                <h3>About UMAP</h3>
+                <p>Uniform Manifold Approximation and Projection (UMAP) further reduces PCA results to 2D while preserving local and global structure. This reveals the intrinsic manifold geometry of neural dynamics.</p>
+            </div>
+        </div>
+
+        <div id="stage5" class="viz-container hidden">
+            <h2 class="viz-title">Stage 5: 1D Spanning Tree</h2>
+            <div class="controls">
+                <div class="control-group">
+                    <label class="control-label">Layout</label>
+                    <select id="treeLayout">
+                        <option value="force">Force-Directed</option>
+                        <option value="radial">Radial</option>
+                        <option value="hierarchical">Hierarchical</option>
+                    </select>
+                </div>
+                <button id="highlightPath">Highlight Path</button>
+            </div>
+            <div id="treePlot" class="plot-container"></div>
+            <div class="info-panel">
+                <h3>About Spanning Tree</h3>
+                <p>The minimum spanning tree connects all time points in UMAP space, creating a 1D structure that represents the temporal evolution of neural states. This tree topology reveals the fundamental trajectory through state space.</p>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">Total Nodes</div>
+                        <div class="stat-value" id="totalNodes">900</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Total Edges</div>
+                        <div class="stat-value" id="totalEdges">899</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Avg Edge Length</div>
+                        <div class="stat-value" id="avgEdgeLength">-</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global data storage
+        let rawData = {
+            probeA: null,
+            probeB: null,
+            probeC: null,
+            probeD: null,
+            probeE: null,
+            probeF: null
+        };
+        let pcaData = null;
+        let treeNodes = null;
+        let treeEdges = null;
+        let currentStage = 1;
+        let animationInterval = null;
+        let latentAnimationInterval = null;
+        let latentTrajectory = [];
+        let selectedUnits = [0, 5, 10]; // Three representative units
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadData();
+            setupEventListeners();
+            showStage(1);
+        });
+
+        // Load all data
+        async function loadData() {
+            try {
+                const dataPath = 'Dataset/Processed/750749662/';
+                
+                // Load probe data
+                const probes = ['A', 'B', 'C', 'D', 'E', 'F'];
+                for (const probe of probes) {
+                    rawData[`probe${probe}`] = await d3.csv(`${dataPath}probe${probe}.csv`);
+                }
+
+                // Load PCA data
+                pcaData = await d3.csv(`${dataPath}neural_trajectory_pca_3d.csv`);
+
+                // Load tree data
+                treeNodes = await d3.csv(`${dataPath}spanning_tree_nodes.csv`);
+                treeEdges = await d3.csv(`${dataPath}spanning_tree_edges.csv`);
+
+                document.getElementById('loading').classList.add('hidden');
+                
+                // Update stats
+                updateStats();
+            } catch (error) {
+                console.error('Error loading data:', error);
+                document.getElementById('loading').innerHTML = '<p>Error loading data. Please check file paths.</p>';
+            }
+        }
+
+        // Setup event listeners
+        function setupEventListeners() {
+            // Stage navigation
+            document.querySelectorAll('.stage').forEach(stage => {
+                stage.addEventListener('click', () => {
+                    const stageNum = parseInt(stage.dataset.stage);
+                    showStage(stageNum);
+                });
+            });
+
+            // Stage 1 controls
+            document.getElementById('probeSelect').addEventListener('change', () => updateRawSignals());
+            document.getElementById('frameSlider').addEventListener('input', (e) => {
+                document.getElementById('frameValue').textContent = e.target.value;
+                updateRawSignals();
+            });
+            document.getElementById('playButton').addEventListener('click', toggleAnimation);
+
+            // Stage 2 controls
+            document.getElementById('playLatentButton').addEventListener('click', toggleLatentAnimation);
+            document.getElementById('resetLatentButton').addEventListener('click', resetLatentSpace);
+
+            // Stage 3 controls
+            document.getElementById('colorByPCA').addEventListener('change', () => updatePCA());
+            document.getElementById('rotatePCA').addEventListener('click', togglePCARotation);
+
+            // Stage 4 controls
+            document.getElementById('colorByUMAP').addEventListener('change', () => updateUMAP());
+
+            // Stage 5 controls
+            document.getElementById('treeLayout').addEventListener('change', () => updateTree());
+            document.getElementById('highlightPath').addEventListener('click', highlightTreePath);
+        }
+
+        // Show specific stage
+        function showStage(stageNum) {
+            currentStage = stageNum;
+
+            // Update stage buttons
+            document.querySelectorAll('.stage').forEach(stage => {
+                stage.classList.remove('active');
+                if (parseInt(stage.dataset.stage) === stageNum) {
+                    stage.classList.add('active');
+                }
+            });
+
+            // Hide all viz containers
+            document.querySelectorAll('.viz-container').forEach(viz => {
+                viz.classList.add('hidden');
+            });
+
+            // Show selected stage
+            const stageElement = document.getElementById(`stage${stageNum}`);
+            if (stageElement) {
+                stageElement.classList.remove('hidden');
+
+                // Initialize visualization for this stage
+                switch(stageNum) {
+                    case 1:
+                        updateRawSignals();
+                        break;
+                    case 2:
+                        updateLatentSpace();
+                        break;
+                    case 3:
+                        updatePCA();
+                        break;
+                    case 4:
+                        updateUMAP();
+                        break;
+                    case 5:
+                        updateTree();
+                        break;
+                }
+            }
+        }
+
+        // Update statistics
+        function updateStats() {
+            if (rawData.probeA) {
+                document.getElementById('totalUnits').textContent = rawData.probeA.length;
+                const regions = new Set(rawData.probeA.map(d => d.ecephys_structure_acronym));
+                document.getElementById('brainRegions').textContent = regions.size;
+            }
+
+            if (treeEdges) {
+                const avgLength = d3.mean(treeEdges, d => parseFloat(d.Weight));
+                document.getElementById('avgEdgeLength').textContent = avgLength.toFixed(3);
+            }
+        }
+
+        // Stage 1: Raw Signals Visualization
+        function updateRawSignals() {
+            const probe = document.getElementById('probeSelect').value;
+            const frame = parseInt(document.getElementById('frameSlider').value);
+            const data = rawData[`probe${probe}`];
+
+            if (!data) return;
+
+            // Get firing rates for this frame
+            const frameCol = `frame_${frame}.0`;
+            const units = data.map((d, i) => ({
+                unit: i,
+                region: d.ecephys_structure_acronym,
+                rate: parseFloat(d[frameCol] || 0),
+                depth: parseFloat(d.probe_vertical_position)
+            }));
+
+            // Sort by depth
+            units.sort((a, b) => b.depth - a.depth);
+
+            // Color by brain region
+            const regionColors = {
+                'VISp': '#ff6b6b',
+                'VISl': '#4ecdc4',
+                'VISal': '#45b7d1',
+                'VISpm': '#96ceb4',
+                'VISam': '#ffeaa7',
+                'VISrl': '#dfe6e9',
+                'CA1': '#a29bfe',
+                'CA3': '#6c5ce7',
+                'DG': '#fd79a8',
+                'LGd': '#fdcb6e',
+                'LP': '#e17055',
+                'PO': '#00b894',
+                'TH': '#00cec9',
+                'Eth': '#fab1a0',
+                'VPM': '#74b9ff'
+            };
+
+            const trace = {
+                type: 'scatter',
+                mode: 'markers',
+                x: units.map(u => u.rate),
+                y: units.map(u => u.unit),
+                marker: {
+                    size: 8,
+                    color: units.map(u => regionColors[u.region] || '#cccccc'),
+                    line: { width: 1, color: '#000' }
+                },
+                text: units.map(u => `Unit ${u.unit}<br>Region: ${u.region}<br>Rate: ${u.rate.toFixed(2)} Hz`),
+                hoverinfo: 'text'
+            };
+
+            const layout = {
+                paper_bgcolor: '#0a0a0a',
+                plot_bgcolor: '#1a1a1a',
+                font: { color: '#ffffff' },
+                xaxis: {
+                    title: 'Firing Rate (Hz)',
+                    gridcolor: '#333333',
+                    zerolinecolor: '#333333'
+                },
+                yaxis: {
+                    title: 'Unit Index (sorted by depth)',
+                    gridcolor: '#333333',
+                    zerolinecolor: '#333333'
+                },
+                height: 600,
+                hovermode: 'closest'
+            };
+
+            Plotly.newPlot('rawSignalsPlot', [trace], layout, {responsive: true});
+        }
+
+        // Stage 2: Latent Space Visualization
+        function updateLatentSpace() {
+            const probe = 'A'; // Use probe A for demo
+            const data = rawData[`probe${probe}`];
+
+            if (!data || data.length === 0) return;
+
+            // Select 3 representative units from different brain regions
+            const regions = [...new Set(data.map(d => d.ecephys_structure_acronym))];
+            selectedUnits = [];
+            
+            // Try to get one unit from each of 3 different regions
+            for (let i = 0; i < Math.min(3, regions.length); i++) {
+                const unitInRegion = data.findIndex(d => d.ecephys_structure_acronym === regions[i]);
+                if (unitInRegion !== -1) {
+                    selectedUnits.push(unitInRegion);
+                }
+            }
+            
+            // If we don't have 3 units, fill with evenly spaced units
+            while (selectedUnits.length < 3) {
+                selectedUnits.push(Math.floor(data.length * selectedUnits.length / 3));
+            }
+
+            // Initialize empty plot
+            initializeLatentSpace();
+        }
+
+        function initializeLatentSpace() {
+            const probe = 'A';
+            const data = rawData[`probe${probe}`];
+            if (!data) return;
+
+            // Get unit info
+            const unitInfo = selectedUnits.map(idx => ({
+                index: idx,
+                region: data[idx].ecephys_structure_acronym,
+                id: data[idx].id
+            }));
+
+            // Create empty 3D scatter plot
+            const trace = {
+                type: 'scatter3d',
+                mode: 'markers+lines',
+                x: [],
+                y: [],
+                z: [],
+                marker: {
+                    size: 4,
+                    color: [],
+                    colorscale: 'Viridis',
+                    showscale: true,
+                    colorbar: { title: 'Time' },
+                    line: { width: 0.5, color: '#ffffff' }
+                },
+                line: {
+                    color: '#00ff88',
+                    width: 2
+                },
+                hovertemplate: 'Frame: %{text}<br>Unit 1: %{x:.2f}<br>Unit 2: %{y:.2f}<br>Unit 3: %{z:.2f}<extra></extra>',
+                text: []
+            };
+
+            const layout = {
+                paper_bgcolor: '#0a0a0a',
+                plot_bgcolor: '#1a1a1a',
+                font: { color: '#ffffff' },
+                scene: {
+                    xaxis: { 
+                        title: `Unit ${selectedUnits[0]} (${unitInfo[0].region})`,
+                        gridcolor: '#333333',
+                        backgroundcolor: '#1a1a1a',
+                        range: [0, 3]
+                    },
+                    yaxis: { 
+                        title: `Unit ${selectedUnits[1]} (${unitInfo[1].region})`,
+                        gridcolor: '#333333',
+                        backgroundcolor: '#1a1a1a',
+                        range: [0, 3]
+                    },
+                    zaxis: { 
+                        title: `Unit ${selectedUnits[2]} (${unitInfo[2].region})`,
+                        gridcolor: '#333333',
+                        backgroundcolor: '#1a1a1a',
+                        range: [0, 3]
+                    },
+                    bgcolor: '#1a1a1a',
+                    camera: {
+                        eye: { x: 1.5, y: 1.5, z: 1.3 }
+                    }
+                },
+                height: 700,
+                showlegend: false
+            };
+
+            Plotly.newPlot('latentSpacePlot', [trace], layout, {responsive: true});
+        }
+
+        function toggleLatentAnimation() {
+            const button = document.getElementById('playLatentButton');
+            
+            if (latentAnimationInterval) {
+                clearInterval(latentAnimationInterval);
+                latentAnimationInterval = null;
+                button.textContent = 'Play Animation';
+            } else {
+                button.textContent = 'Pause Animation';
+                const probe = 'A';
+                const data = rawData[`probe${probe}`];
+                if (!data) return;
+
+                const speed = parseInt(document.getElementById('latentSpeedSelect').value);
+                let frame = latentTrajectory.length;
+
+                latentAnimationInterval = setInterval(() => {
+                    if (frame >= 900) {
+                        clearInterval(latentAnimationInterval);
+                        latentAnimationInterval = null;
+                        button.textContent = 'Play Animation';
+                        return;
+                    }
+
+                    // Get firing rates for the 3 selected units at this frame
+                    const frameCol = `frame_${frame}.0`;
+                    const point = {
+                        x: parseFloat(data[selectedUnits[0]][frameCol] || 0),
+                        y: parseFloat(data[selectedUnits[1]][frameCol] || 0),
+                        z: parseFloat(data[selectedUnits[2]][frameCol] || 0),
+                        frame: frame
+                    };
+
+                    latentTrajectory.push(point);
+
+                    // Update plot
+                    const update = {
+                        x: [latentTrajectory.map(p => p.x)],
+                        y: [latentTrajectory.map(p => p.y)],
+                        z: [latentTrajectory.map(p => p.z)],
+                        'marker.color': [latentTrajectory.map(p => p.frame)],
+                        text: [latentTrajectory.map(p => p.frame)]
+                    };
+
+                    Plotly.restyle('latentSpacePlot', update, [0]);
+
+                    // Update stats
+                    document.getElementById('currentLatentFrame').textContent = frame;
+                    document.getElementById('pointsPlotted').textContent = latentTrajectory.length;
+
+                    frame++;
+                }, speed);
+            }
+        }
+
+        function resetLatentSpace() {
+            latentTrajectory = [];
+            if (latentAnimationInterval) {
+                clearInterval(latentAnimationInterval);
+                latentAnimationInterval = null;
+                document.getElementById('playLatentButton').textContent = 'Play Animation';
+            }
+            document.getElementById('currentLatentFrame').textContent = '0';
+            document.getElementById('pointsPlotted').textContent = '0';
+            initializeLatentSpace();
+        }
+
+        // Stage 3: PCA Visualization
+        function updatePCA() {
+            if (!pcaData) return;
+
+            const colorBy = document.getElementById('colorByPCA').value;
+            let colorValues, colorLabel;
+
+            switch(colorBy) {
+                case 'time':
+                    colorValues = pcaData.map((d, i) => i);
+                    colorLabel = 'Time Frame';
+                    break;
+                case 'brightness':
+                    colorValues = pcaData.map(d => parseFloat(d.brightness));
+                    colorLabel = 'Brightness';
+                    break;
+                case 'complexity':
+                    colorValues = pcaData.map(d => parseFloat(d.complexity));
+                    colorLabel = 'Complexity';
+                    break;
+            }
+
+            const trace = {
+                type: 'scatter3d',
+                mode: 'lines+markers',
+                x: pcaData.map(d => parseFloat(d.PC1)),
+                y: pcaData.map(d => parseFloat(d.PC2)),
+                z: pcaData.map(d => parseFloat(d.PC3)),
+                marker: {
+                    size: 3,
+                    color: colorValues,
+                    colorscale: 'Viridis',
+                    showscale: true,
+                    colorbar: { title: colorLabel }
+                },
+                line: {
+                    color: colorValues,
+                    colorscale: 'Viridis',
+                    width: 2
+                },
+                hovertemplate: 'Frame: %{text}<br>PC1: %{x:.2f}<br>PC2: %{y:.2f}<br>PC3: %{z:.2f}<extra></extra>',
+                text: pcaData.map(d => d.frame)
+            };
+
+            const layout = {
+                paper_bgcolor: '#0a0a0a',
+                plot_bgcolor: '#1a1a1a',
+                font: { color: '#ffffff' },
+                scene: {
+                    xaxis: { title: 'PC1', gridcolor: '#333333', backgroundcolor: '#1a1a1a' },
+                    yaxis: { title: 'PC2', gridcolor: '#333333', backgroundcolor: '#1a1a1a' },
+                    zaxis: { title: 'PC3', gridcolor: '#333333', backgroundcolor: '#1a1a1a' },
+                    bgcolor: '#1a1a1a'
+                },
+                height: 700
+            };
+
+            Plotly.newPlot('pcaPlot', [trace], layout, {responsive: true});
+        }
+
+        // Stage 4: UMAP Visualization
+        function updateUMAP() {
+            if (!treeNodes) return;
+
+            const colorBy = document.getElementById('colorByUMAP').value;
+            let colorValues, colorLabel;
+
+            switch(colorBy) {
+                case 'time':
+                    colorValues = treeNodes.map(d => parseFloat(d.Frame));
+                    colorLabel = 'Time Frame';
+                    break;
+                case 'brightness':
+                    // Use PCA data for features
+                    colorValues = pcaData.map(d => parseFloat(d.brightness));
+                    colorLabel = 'Brightness';
+                    break;
+                case 'complexity':
+                    colorValues = pcaData.map(d => parseFloat(d.complexity));
+                    colorLabel = 'Complexity';
+                    break;
+            }
+
+            const trace = {
+                type: 'scatter',
+                mode: 'markers',
+                x: treeNodes.map(d => parseFloat(d.X)),
+                y: treeNodes.map(d => parseFloat(d.Y)),
+                marker: {
+                    size: 5,
+                    color: colorValues,
+                    colorscale: 'Viridis',
+                    showscale: true,
+                    colorbar: { title: colorLabel },
+                    line: { width: 0.5, color: '#ffffff' }
+                },
+                text: treeNodes.map(d => `Frame ${d.Frame}`),
+                hovertemplate: '%{text}<br>X: %{x:.3f}<br>Y: %{y:.3f}<extra></extra>'
+            };
+
+            const layout = {
+                paper_bgcolor: '#0a0a0a',
+                plot_bgcolor: '#1a1a1a',
+                font: { color: '#ffffff' },
+                xaxis: {
+                    title: 'UMAP 1',
+                    gridcolor: '#333333',
+                    zerolinecolor: '#333333'
+                },
+                yaxis: {
+                    title: 'UMAP 2',
+                    gridcolor: '#333333',
+                    zerolinecolor: '#333333'
+                },
+                height: 600,
+                hovermode: 'closest'
+            };
+
+            Plotly.newPlot('umapPlot', [trace], layout, {responsive: true});
+        }
+
+        // Stage 5: Tree Visualization
+        function updateTree() {
+            if (!treeNodes || !treeEdges) return;
+
+            // Create edge traces
+            const edgeTraces = [];
+            treeEdges.forEach(edge => {
+                const source = treeNodes[parseInt(edge.Source)];
+                const target = treeNodes[parseInt(edge.Target)];
+                
+                if (source && target) {
+                    edgeTraces.push({
+                        type: 'scatter',
+                        mode: 'lines',
+                        x: [parseFloat(source.X), parseFloat(target.X)],
+                        y: [parseFloat(source.Y), parseFloat(target.Y)],
+                        line: {
+                            color: '#00ff88',
+                            width: 1,
+                            opacity: 0.3
+                        },
+                        hoverinfo: 'skip',
+                        showlegend: false
+                    });
+                }
+            });
+
+            // Create node trace
+            const nodeTrace = {
+                type: 'scatter',
+                mode: 'markers',
+                x: treeNodes.map(d => parseFloat(d.X)),
+                y: treeNodes.map(d => parseFloat(d.Y)),
+                marker: {
+                    size: 4,
+                    color: treeNodes.map(d => parseFloat(d.Frame)),
+                    colorscale: 'Viridis',
+                    showscale: true,
+                    colorbar: { title: 'Time Frame' },
+                    line: { width: 0.5, color: '#ffffff' }
+                },
+                text: treeNodes.map(d => `Frame ${d.Frame}`),
+                hovertemplate: '%{text}<extra></extra>'
+            };
+
+            const layout = {
+                paper_bgcolor: '#0a0a0a',
+                plot_bgcolor: '#1a1a1a',
+                font: { color: '#ffffff' },
+                xaxis: {
+                    title: 'UMAP 1',
+                    gridcolor: '#333333',
+                    zerolinecolor: '#333333',
+                    showgrid: false
+                },
+                yaxis: {
+                    title: 'UMAP 2',
+                    gridcolor: '#333333',
+                    zerolinecolor: '#333333',
+                    showgrid: false
+                },
+                height: 700,
+                hovermode: 'closest'
+            };
+
+            Plotly.newPlot('treePlot', [...edgeTraces, nodeTrace], layout, {responsive: true});
+        }
+
+        // Animation controls
+        function toggleAnimation() {
+            const button = document.getElementById('playButton');
+            
+            if (animationInterval) {
+                clearInterval(animationInterval);
+                animationInterval = null;
+                button.textContent = 'Play Animation';
+            } else {
+                button.textContent = 'Pause Animation';
+                animationInterval = setInterval(() => {
+                    const slider = document.getElementById('frameSlider');
+                    let value = parseInt(slider.value);
+                    value = (value + 1) % 900;
+                    slider.value = value;
+                    document.getElementById('frameValue').textContent = value;
+                    updateRawSignals();
+                }, 50);
+            }
+        }
+
+        // PCA rotation
+        let pcaRotationInterval = null;
+        function togglePCARotation() {
+            const button = document.getElementById('rotatePCA');
+            
+            if (pcaRotationInterval) {
+                clearInterval(pcaRotationInterval);
+                pcaRotationInterval = null;
+                button.textContent = 'Auto Rotate';
+            } else {
+                button.textContent = 'Stop Rotation';
+                let angle = 0;
+                pcaRotationInterval = setInterval(() => {
+                    angle += 1;
+                    const update = {
+                        'scene.camera.eye': {
+                            x: 1.5 * Math.cos(angle * Math.PI / 180),
+                            y: 1.5 * Math.sin(angle * Math.PI / 180),
+                            z: 1.2
+                        }
+                    };
+                    Plotly.relayout('pcaPlot', update);
+                }, 50);
+            }
+        }
+
+        // Highlight tree path
+        function highlightTreePath() {
+            // Highlight main path through tree (simplified - just color by time)
+            updateTree();
+        }
+    </script>
+</body>
+</html>
