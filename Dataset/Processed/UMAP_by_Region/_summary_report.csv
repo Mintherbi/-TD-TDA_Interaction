@@ -1,0 +1,17 @@
+region,n_units,n_frames,pca_components,variance_explained,umap_shape,status,csv_file
+CA1,113,900,50.0,0.6265313505847868,900×3,success,CA1_umap_3d.csv
+CA3,10,900,10.0,0.9999999999999999,900×3,success,CA3_umap_3d.csv
+DG,26,900,26.0,0.9999999999999999,900×3,success,DG_umap_3d.csv
+Eth,2,0,,,N/A,skipped_too_few_units,
+LD,1,0,,,N/A,skipped_too_few_units,
+LGd,82,900,50.0,0.7917568217747781,900×3,success,LGd_umap_3d.csv
+LP,142,900,50.0,0.605574324286009,900×3,success,LP_umap_3d.csv
+PO,30,900,30.0,0.9999999999999999,900×3,success,PO_umap_3d.csv
+TH,13,900,13.0,1.0000000000000002,900×3,success,TH_umap_3d.csv
+VISal,46,900,46.0,1.0,900×3,success,VISal_umap_3d.csv
+VISam,64,900,50.0,0.9472447134250171,900×3,success,VISam_umap_3d.csv
+VISl,20,900,20.0,1.0,900×3,success,VISl_umap_3d.csv
+VISp,52,900,50.0,0.9930614844584846,900×3,success,VISp_umap_3d.csv
+VISpm,64,900,50.0,0.9245819618957026,900×3,success,VISpm_umap_3d.csv
+VISrl,41,900,41.0,1.0000000000000002,900×3,success,VISrl_umap_3d.csv
+VPM,55,900,50.0,0.950130459129266,900×3,success,VPM_umap_3d.csv
